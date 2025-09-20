@@ -62,6 +62,9 @@ def score():
 @app.route("/crime", methods=['GET'])
 def all_crime():
 
+    x = []
+
+    '''print("Finding all crime")
     relevant_cols = [
         "id",
         "_id",
@@ -97,7 +100,7 @@ def all_crime():
                 d[col] = int(d[col])
 
         
-        x.append(d)
+        x.append(d)'''
         
 
     return x
