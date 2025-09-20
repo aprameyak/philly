@@ -7,7 +7,9 @@ from score import score_single
 
 from flask_cors import CORS
 app = Flask(__name__)
-CORS(app) 
+
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
 
 df = pd.read_csv("crime_2025.csv")
 
@@ -91,8 +93,9 @@ def all_crime():
                 d[col] = None
         results.append(d)
 
-    # 🚀 always return a JSON array
+    # ✅ Return plain JSON array
     return jsonify(results[:100])
+
 
 
 

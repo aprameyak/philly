@@ -117,14 +117,14 @@ export interface UserLogin {
 class ApiService {
   // ---------- Crime Data ---------- //
   async getCrime(): Promise<Incident[]> {
-    const response = await axios.get(`${API_BASE_URL}/crime`);
-    const data = response.data;
+    const { data } = await axios.get(`${API_BASE_URL}/crime`);
+    console.log("Raw data:", data);
 
     // Ensure array
-    if (!Array.isArray(data)) {
-      console.error("Expected array, got:", data);
-      return [];
-    }
+    // if (!Array.isArray(data)) {
+    //   console.error("Expected array, got:", data);
+    //   return [];
+    // }
 
     console.log("Crime data sample:", data.slice(0, 5));
     return data;
