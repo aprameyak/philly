@@ -2,6 +2,7 @@ from rate import get_rating
 from flask import Flask, request, jsonify
 import pandas as pd
 import requests
+import threading
 from score import score_single
 
 app = Flask(__name__)
@@ -85,18 +86,19 @@ def all_crime():
 
 
     x = []
-    for idx, row in df.iterrows():
+
+    def process_row(row):
         dic = {}
         for c in cat:
             dic[c] = row.get(c)
         for c in numerical:
             dic[c] = float(row.get(c) or 0)
-
-        
         x.append(dic)
-        
 
-    return x
+    for idx, row in df.iloc[len(df) - 1001 : len(df) - 1, :].iterrows():
+        process_row(row)
+
+    return jsonify(x)
 
 
 @app.route("/incidents/<string:id>", methods=["POST"])
