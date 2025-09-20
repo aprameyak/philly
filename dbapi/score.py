@@ -7,7 +7,6 @@ from utils import danger_scores
 
 # Load environment variables
 load_dotenv()
-api_key = os.environ["MISTRAL"]
 
 # client = Mistral(api_key=api_key)
 client = Cerebras(
