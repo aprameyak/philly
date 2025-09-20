@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
 from datetime import datetime, timedelta
@@ -84,6 +85,15 @@ class CrimeIncident(BaseModel):
 # FastAPI App
 # -------------------
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # -------------------
 # User Management Endpoints
@@ -179,6 +189,20 @@ def get_user_all_reports(username: str, db: Session = Depends(get_db)):
             created_at=report.created_at.isoformat()
         )
         for report in reports
+    ]
+
+@app.get("/leaderboard", response_model=List[UserResponse])
+def get_leaderboard(db: Session = Depends(get_db)):
+    """Get leaderboard of users sorted by report count"""
+    users = db.query(User).order_by(User.reports.desc()).limit(50).all()
+    
+    return [
+        UserResponse(
+            username=user.username,
+            display_name=user.display_name,
+            reports=user.reports
+        )
+        for user in users
     ]
 
 # -------------------

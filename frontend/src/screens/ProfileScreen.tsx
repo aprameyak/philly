@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
-import { apiService, UserData } from '../services/api';
+import { apiService, UserReportsResponse } from '../services/api';
 
 // Status levels with dynamic thresholds
 const STATUS_LEVELS = [
@@ -27,7 +27,7 @@ const STATUS_LEVELS = [
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<UserReportsResponse | null>(null);
 
   // Fetch user data on component mount
   useEffect(() => {
@@ -38,6 +38,22 @@ const ProfileScreen = () => {
           setUserData(data);
         } catch (error) {
           console.error('Failed to fetch user data:', error);
+          // If user doesn't exist, create them
+          if (error instanceof Error && error.message.includes('User not found')) {
+            try {
+              console.log('User not found, creating user:', user.username);
+              await apiService.registerUser({
+                username: user.username,
+                password: 'defaultpassword', // This is just for demo
+                display_name: user.display_name || user.username
+              });
+              // Try to fetch again
+              const data = await apiService.getUserData(user.username);
+              setUserData(data);
+            } catch (createError) {
+              console.error('Failed to create user:', createError);
+            }
+          }
         }
       }
     };

@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
       const storedToken = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
       if (storedToken) {
-        apiService.setAuthToken(storedToken);
+        // Token handling removed for simplicity
       }
       if (storedUser) {
         const userData = JSON.parse(storedUser);
@@ -80,10 +80,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       setIsLoading(true);
-      const userData = await apiService.loginUser(loginData);
-      // apiService.loginUser sets the token internally; persist it
-      const token = apiService.getAuthToken();
-      if (token) await saveTokenToStorage(token);
+      const loginResponse = await apiService.loginUser(loginData);
+      
+      // Convert LoginResponse to User interface
+      const userData: User = {
+        username: loginResponse.username,
+        display_name: loginResponse.display_name,
+        reports: loginResponse.total_reports
+      };
+      
       setUser(userData);
       await saveUserToStorage(userData);
     } catch (error: any) {
@@ -99,20 +104,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       setIsLoading(true);
-      const userData = await apiService.registerUser(registerData);
-      // authapi.register doesn't return a token; auto-login to obtain token
-      try {
-        const loginData = { username: registerData.username, password: registerData.password };
-        const loggedInUser = await apiService.loginUser(loginData);
-        const token = apiService.getAuthToken();
-        if (token) await saveTokenToStorage(token);
-        setUser(loggedInUser);
-        await saveUserToStorage(loggedInUser);
-      } catch (e) {
-        // If auto-login fails, still return created user object
-        setUser(userData);
-        await saveUserToStorage(userData);
-      }
+      const registerResponse = await apiService.registerUser(registerData);
+      
+      // Convert RegisterResponse to User interface
+      const userData: User = {
+        username: registerResponse.username,
+        display_name: registerResponse.display_name,
+        reports: registerResponse.reports
+      };
+      
+      setUser(userData);
+      await saveUserToStorage(userData);
     } catch (error: any) {
       const errorMessage = error.message || 'Registration failed';
       setError(errorMessage);
@@ -125,7 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setUser(null);
-      apiService.setAuthToken(null);
+      // Token handling removed for simplicity
       await removeUserFromStorage();
       await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
     } catch (error) {

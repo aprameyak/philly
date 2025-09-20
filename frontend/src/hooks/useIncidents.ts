@@ -17,11 +17,18 @@ export const useCrime = (): UseCrimeReturn => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching crime data from API...');
       const data = await apiService.getCrime();
+      console.log('Crime data fetched successfully:', data.length, 'incidents');
       setIncidents(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch crime data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch crime data';
+      setError(errorMessage);
       console.error('Error fetching crime data:', err);
+      console.error('Error details:', {
+        message: errorMessage,
+        stack: err instanceof Error ? err.stack : 'No stack trace'
+      });
     } finally {
       setLoading(false);
     }

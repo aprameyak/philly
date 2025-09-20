@@ -281,7 +281,45 @@ const ReportScreen = () => {
       );
     } catch (error) {
       console.error("Error submitting report:", error);
-      Alert.alert("Error", "Failed to submit report. Please try again.");
+      
+      // If user doesn't exist, try to create them first
+      if (error instanceof Error && error.message.includes('User not found')) {
+        try {
+          console.log('User not found, creating user:', user.username);
+          await apiService.registerUser({
+            username: user.username,
+            password: 'defaultpassword', // This is just for demo
+            display_name: user.display_name || user.username
+          });
+          
+          // Try to submit the report again
+          const reportRequest: CreateUserReportRequest = {
+            username: user.username,
+            type: reportData.type,
+            description: reportData.description,
+            latitude: reportData.coordinates?.latitude,
+            longitude: reportData.coordinates?.longitude,
+            severity: severityMap[reportData.severity] || 3,
+            photos: reportData.photos
+          };
+
+          const response = await apiService.createUserReport(reportRequest);
+          
+          Alert.alert(
+            "Success", 
+            `Your report has been submitted successfully! Total reports: ${response.total_reports}`, 
+            [
+              { text: "OK", onPress: () => navigation.goBack() },
+            ]
+          );
+          return;
+        } catch (createError) {
+          console.error('Failed to create user:', createError);
+          Alert.alert("Error", "Failed to create user account. Please try again.");
+        }
+      } else {
+        Alert.alert("Error", "Failed to submit report. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

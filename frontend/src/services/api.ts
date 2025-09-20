@@ -1,4 +1,5 @@
-const AUTH_BASE_URL = 'http://127.0.0.1:8000';
+// Use localhost for development, but fallback to IP if needed
+const AUTH_BASE_URL = __DEV__ ? 'http://localhost:8000' : 'http://localhost:8000';
 
 export interface UserReportsResponse {
   username: string;
@@ -27,6 +28,43 @@ export interface ReportResponse {
   created_at: string;
 }
 
+export interface UserResponse {
+  username: string;
+  display_name?: string;
+  reports: number;
+}
+
+// Auth-related interfaces
+export interface User {
+  username: string;
+  display_name?: string;
+  reports: number;
+  created_at?: string;
+}
+
+export interface UserLogin {
+  username: string;
+  password: string;
+}
+
+export interface UserRegister {
+  username: string;
+  password: string;
+  display_name?: string;
+}
+
+export interface LoginResponse {
+  username: string;
+  display_name: string;
+  total_reports: number;
+}
+
+export interface RegisterResponse {
+  username: string;
+  display_name: string;
+  reports: number;
+}
+
 export interface CrimeIncident {
   latitude: number;        
   longitude: number;       
@@ -48,8 +86,11 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
   
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
+  private async request<T>(endpoint: string, options: RequestInit & { baseUrl?: string } = {}): Promise<T> {
+    const baseUrl = options.baseUrl || this.baseUrl;
+    const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
+    console.log('Making API request to:', url);
+    
     let headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (options.headers) {
       if (options.headers instanceof Headers) {
@@ -66,9 +107,26 @@ class ApiService {
     }
     const config: RequestInit = { ...options, headers };
 
-    const response = await fetch(url, config);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
+    try {
+      const response = await fetch(url, config);
+      console.log('API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('API response data length:', Array.isArray(data) ? data.length : 'not array');
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      if (error instanceof TypeError && error.message.includes('Network request failed')) {
+        throw new Error(`Network request failed. Make sure the backend is running on ${this.baseUrl}`);
+      }
+      throw error;
+    }
   }
 
   // -------------------
@@ -94,11 +152,51 @@ class ApiService {
     return this.request<UserReportsResponse>(`/reports/${username}`);
   }
 
+  async getLeaderboard(): Promise<UserResponse[]> {
+    return this.request<UserResponse[]>('/leaderboard');
+  }
+
+  // -------------------
+  // Auth Methods
+  // -------------------
+
+  async registerUser(userData: UserRegister): Promise<RegisterResponse> {
+    return this.request<RegisterResponse>('/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async loginUser(credentials: UserLogin): Promise<LoginResponse> {
+    // For now, we'll use a simple approach since we don't have a login endpoint
+    // We'll just return the user data if they exist
+    const userData = await this.getUserData(credentials.username);
+    return {
+      username: userData.username,
+      display_name: userData.username, // Fallback to username
+      total_reports: userData.total_reports
+    };
+  }
+
   // -------------------
   // Crime Data Methods
   // -------------------
 
   async getCrime(): Promise<CrimeIncident[]> {
+    // Try to get real data from dbapi first, fallback to authapi
+    try {
+      const realData = await this.request<CrimeIncident[]>('/crime', {
+        baseUrl: 'http://localhost:8001'
+      });
+      if (realData && realData.length > 0) {
+        console.log('Using real crime data from dbapi:', realData.length, 'records');
+        return realData;
+      }
+    } catch (error) {
+      console.log('dbapi not available, using simulated data from authapi');
+    }
+    
+    // Fallback to simulated data from authapi
     return this.request<CrimeIncident[]>('/crime');
   }
 

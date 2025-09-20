@@ -21,20 +21,29 @@ df = pd.read_csv("crime_2025.csv")
 
 def get_closest(df, lat, long):
     dists = []
-    for lat2, lon2 in zip(df.lat, df.lng):
+    # Use point_y for latitude and point_x for longitude (real data format)
+    for lat2, lon2 in zip(df.point_y, df.point_x):
         dists.append(meters_dist(lat, lat2, long, lon2))
     
     copy = df.copy()
     copy['dist'] = dists
-    copy = copy.sort_values(by = 'dist').loc[5, :]
+    copy = copy.sort_values(by = 'dist').iloc[5]  # Use iloc instead of loc for integer indexing
 
-    if str(copy['danger_code']).lower() == 'nan':
-        copy['danger_code'] = [danger_scores[i] if i in danger_scores else 3 for i in copy.text_general_code]
+    # Add danger_code if it doesn't exist
+    if 'danger_code' not in copy or pd.isna(copy.get('danger_code')):
+        copy['danger_code'] = danger_scores.get(copy.get('text_general_code'), 3)
 
-    copy = copy[[
-        "dc_dist", "dispatch_date_time", "location_block", "text_general_code", "lat", "lng", "danger_code"
-    ]]
-    return copy.T.to_json()
+    # Return relevant fields, using point_y/point_x for coordinates
+    result = {
+        "dc_dist": int(copy.get('dc_dist', 0)) if pd.notna(copy.get('dc_dist')) else 0,
+        "dispatch_date_time": str(copy.get('dispatch_date_time', '')),
+        "location_block": str(copy.get('location_block', '')),
+        "text_general_code": str(copy.get('text_general_code', '')),
+        "lat": float(copy.get('point_y', 0)) if pd.notna(copy.get('point_y')) else 0.0,  # point_y is latitude
+        "lng": float(copy.get('point_x', 0)) if pd.notna(copy.get('point_x')) else 0.0,  # point_x is longitude
+        "danger_code": int(copy.get('danger_code', 3))
+    }
+    return json.dumps(result)
 
 
 

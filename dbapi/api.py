@@ -9,7 +9,18 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app) 
 
-df = pd.read_csv("crime_2025.csv")
+# Try to load real crime data, fallback to empty DataFrame if not available
+try:
+    df = pd.read_csv("crime_2025.csv")
+    print(f"Loaded {len(df)} real crime records")
+except FileNotFoundError:
+    print("No real crime data found, creating empty DataFrame")
+    df = pd.DataFrame(columns=[
+        "id", "_id", "the_geom", "cartodb_id", "the_geom_webmercator",
+        "objectid", "dc_dist", "psa", "dispatch_date_time", "dispatch_date",
+        "dispatch_time", "hour", "dc_key", "location_block", "ucr_general",
+        "text_general_code", "point_x", "point_y", "lat", "lng", "danger_score"
+    ])
 
 
 @app.route("/", methods=["GET"])
@@ -66,17 +77,21 @@ def all_crime():
         "id", "_id", "the_geom", "cartodb_id", "the_geom_webmercator",
         "objectid", "dc_dist", "psa", "dispatch_date_time", "dispatch_date",
         "dispatch_time", "hour", "dc_key", "location_block", "ucr_general",
-        "text_general_code", "point_x", "point_y", "lat", "lng"
+        "text_general_code", "point_x", "point_y"
     ]
 
     numerical = [
-        'lat', 'lng', 'point_x', 'point_y',
         'cartodb_id', 'objectid', 'dc_dist', 'hour', 'ucr_general'
     ]
+    
+    # Handle coordinates separately to preserve precision
+    coordinate_cols = ['point_x', 'point_y']
 
     results = []
     for _, row in df.iterrows():
         d = {col: row.get(col, None) for col in relevant_cols}
+        
+        # Handle numerical columns
         for col in numerical:
             val = d.get(col)
             if pd.notna(val):
@@ -89,6 +104,18 @@ def all_crime():
                         d[col] = None
             else:
                 d[col] = None
+        
+        # Handle coordinate columns with full precision
+        for col in coordinate_cols:
+            val = d.get(col)
+            if pd.notna(val):
+                try:
+                    d[col] = float(val)
+                except:
+                    d[col] = None
+            else:
+                d[col] = None
+                
         results.append(d)
 
     # 🚀 always return a JSON array

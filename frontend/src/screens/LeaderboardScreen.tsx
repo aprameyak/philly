@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { apiService, UserData } from '../services/api';
+import { apiService, UserResponse } from '../services/api';
 
 // Status levels with dynamic thresholds (same as ProfileScreen)
 const STATUS_LEVELS = [
@@ -26,7 +26,7 @@ const STATUS_LEVELS = [
 
 const LeaderboardScreen = () => {
   const { user } = useAuth();
-  const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
+  const [leaderboard, setLeaderboard] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -78,18 +78,18 @@ const LeaderboardScreen = () => {
     }
   };
 
-  const formatUserDisplayName = (userData: UserData) => {
-    // Try to get display name from user data, fallback to user_id
-    return userData.user_id || 'Anonymous User';
+  const formatUserDisplayName = (userData: UserResponse) => {
+    // Try to get display name from user data, fallback to username
+    return userData.display_name || userData.username || 'Anonymous User';
   };
 
-  const isCurrentUser = (userData: UserData) => {
-    return user?.username === userData.user_id;
+  const isCurrentUser = (userData: UserResponse) => {
+    return user?.username === userData.username;
   };
 
   // Calculate current status based on total submissions
-  const getCurrentStatus = (userData: UserData) => {
-    const totalReports = userData.total_submissions || 0;
+  const getCurrentStatus = (userData: UserResponse) => {
+    const totalReports = userData.reports || 0;
     return STATUS_LEVELS.find(level => 
       totalReports >= level.minReports && totalReports <= level.maxReports
     ) || STATUS_LEVELS[0];
@@ -173,7 +173,7 @@ const LeaderboardScreen = () => {
 
                   <View style={styles.scoreContainer}>
                     <Text style={[styles.score, { color: rankColor }]}>
-                      {userData.total_reports}
+                      {userData.reports}
                     </Text>
                     <Text style={styles.scoreLabel}>reports</Text>
                   </View>

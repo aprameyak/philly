@@ -569,6 +569,7 @@ const MapScreen = () => {
         </TouchableOpacity>
       </View>
 
+
       {/* Map WebView */}
       <View style={styles.mapContainer}>
         {(isLoading || incidentsLoading) && (
