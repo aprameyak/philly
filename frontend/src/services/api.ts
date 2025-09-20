@@ -1,5 +1,7 @@
 // API service for PhillySafe backend
 const API_BASE_URL = 'http://localhost:8000'; // Change this to your backend URL
+// Auth service (separate auth microservice) - change if your auth server runs elsewhere
+const AUTH_BASE_URL = 'http://127.0.0.1:8000';
 
 export interface Incident {
   id?: string;
@@ -177,37 +179,66 @@ export interface UserLogin {
 
 class ApiService {
   private baseUrl: string;
+  private authToken: string | null = null;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
 
+  /**
+   * Generic request helper.
+   * If `endpoint` is an absolute URL (starts with http), use it as-is.
+   * Otherwise prefix with `baseUrl`.
+   * Automatically attaches JSON content-type by default and adds Authorization header when token is set.
+   */
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
+
+    const defaultHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Merge headers passed in options (options.headers may be Headers or Record)
+    const passedHeaders = (options.headers as Record<string, string>) || {};
+    const headers: Record<string, string> = {
+      ...defaultHeaders,
+      ...passedHeaders,
+    };
+
+    // Attach auth token when available
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+
     const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
       ...options,
+      headers,
     };
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
     }
+  }
+
+  // Allow AuthContext or other callers to set the token
+  setAuthToken(token: string | null) {
+    this.authToken = token;
+  }
+
+  getAuthToken() {
+    return this.authToken;
   }
 
   // Get all crime data
@@ -277,28 +308,66 @@ class ApiService {
   // Authentication API Methods
   // Register a new user
   async registerUser(userData: UserRegister): Promise<User> {
-    return this.request<User>('/auth/register', {
+    // authapi expects form-encoded fields for register; use absolute URL in case auth service is separate
+    const form = new URLSearchParams();
+    form.append('username', userData.username);
+    form.append('password', userData.password);
+    // authapi does not accept display_name by default; include it as an optional field
+    if (userData.display_name) form.append('display_name', userData.display_name);
+
+  const result = await this.request<any>(`${AUTH_BASE_URL}/register`, {
       method: 'POST',
-      body: JSON.stringify(userData),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
     });
+
+    // authapi returns a success message; convert to frontend User shape minimal object
+    return {
+      id: result.id || userData.username,
+      username: userData.username,
+      display_name: userData.display_name || userData.username,
+      total_contributions: 0,
+    } as User;
   }
 
   // Login user
+  
   async loginUser(loginData: UserLogin): Promise<User> {
-    return this.request<User>('/auth/login', {
+    // authapi login expects OAuth2 form encoded data; it returns access_token
+    const form = new URLSearchParams();
+    form.append('username', loginData.username);
+    form.append('password', loginData.password);
+    
+
+  const tokenResult = await this.request<{ access_token: string; token_type: string }>(`${AUTH_BASE_URL}/login`, {
       method: 'POST',
-      body: JSON.stringify(loginData),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
     });
+
+    // Store token for subsequent requests
+    this.setAuthToken(tokenResult.access_token);
+
+    // Fetch profile info
+  const profile = await this.request<any>(`${AUTH_BASE_URL}/profile`);
+
+    return {
+      id: profile.username,
+      username: profile.username,
+      display_name: profile.username,
+      total_contributions: 0,
+    } as User;
   }
 
   // Get user by username
   async getUserByUsername(username: string): Promise<User> {
-    return this.request<User>(`/auth/users/${username}`);
+    // authapi exposes /profile which requires Authorization header; ensure token is set and call /profile
+  return this.request<User>(`${AUTH_BASE_URL}/profile`);
   }
 
   // Update user contributions
   async updateUserContributions(username: string, contributions: number): Promise<{message: string}> {
-    return this.request<{message: string}>(`/auth/users/${username}/contributions?contributions=${contributions}`, {
+    return this.request<{message: string}>(`${this.baseUrl}/auth/users/${username}/contributions?contributions=${contributions}`, {
       method: 'PUT',
     });
   }
