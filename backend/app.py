@@ -4,7 +4,7 @@ from bson.json_util import dumps
 import os
 
 
-MONGO_URL = "mongodb+srv://mongodb:mongodb@cluster0.aejxpyz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URL = os.getenv(MONGO_URL)
 
 DATABASE_NAME = "appdata"
 COLLECTION_NAME = "crimedata"
