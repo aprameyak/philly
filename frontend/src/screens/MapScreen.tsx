@@ -27,9 +27,16 @@ const MapScreen = () => {
   const webViewRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [crimeData, setCrimeData] = useState<any[]>([]);
-  const { incidents, loading: incidentsLoading, error: incidentsError } = useCrime();
+  const {
+    incidents,
+    loading: incidentsLoading,
+    error: incidentsError,
+  } = useCrime();
   const [currentFilters] = useState({
     timeRange: "7d",
     crimeTypes: [],
@@ -74,7 +81,6 @@ const MapScreen = () => {
   const handleFilterPress = () => {
     Alert.alert("Filters", "Filter functionality would open here");
   };
-
 
   // Single HTML file with everything embedded
   const createMapHTML = () => {
@@ -399,10 +405,10 @@ const MapScreen = () => {
           </Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>PhillyWatch</Text>
-          <Text>
-            {" "}
-            <Ionicons name={"person-circle-outline"} size={25} />
-          </Text>
+        <Text>
+          {" "}
+          <Ionicons name={"person-circle-outline"} size={25} />
+        </Text>
       </View>
 
       {/* Search Bar */}
@@ -429,7 +435,7 @@ const MapScreen = () => {
         </View>
         <View style={styles.filterChip}>
           <Text style={styles.filterChipText}>
-            {incidentsLoading ? 'Loading...' : `${crimeData.length} incidents`}
+            {incidentsLoading ? "Loading..." : `${crimeData.length} incidents`}
           </Text>
         </View>
         <TouchableOpacity
@@ -450,12 +456,12 @@ const MapScreen = () => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
             <Text style={styles.loadingText}>
-              {incidentsLoading ? 'Loading incident data...' : 'Loading Philadelphia Crime Map...'}
+              {incidentsLoading
+                ? "Loading incident data..."
+                : "Loading Philadelphia Crime Map..."}
             </Text>
             {incidentsError && (
-              <Text style={styles.errorText}>
-                Error: {incidentsError}
-              </Text>
+              <Text style={styles.errorText}>Error: {incidentsError}</Text>
             )}
           </View>
         )}

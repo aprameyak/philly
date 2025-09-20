@@ -1,6 +1,9 @@
-// API service for PhillySafe backend
-const API_BASE_URL = 'http://localhost:8000'; // Change this to your backend URL
+import axios from "axios";
 
+const API_BASE_URL = "http://localhost:5000"; // Flask backend
+const AUTH_BASE_URL = "http://localhost:8000"; // FastAPI backend
+
+// ---------------- Types ---------------- //
 export interface Incident {
   id?: string;
   _id?: string;
@@ -24,7 +27,6 @@ export interface Incident {
   lng?: number;
 }
 
-// Converted incident data for UI display
 export interface ConvertedIncident {
   id: string;
   type: string;
@@ -45,28 +47,8 @@ export interface ConvertedIncident {
   photos?: string[];
 }
 
-export interface CreateIncidentRequest {
-  the_geom?: string;
-  cartodb_id?: number;
-  the_geom_webmercator?: string;
-  objectid?: number;
-  dc_dist?: number;
-  psa?: number;
-  dispatch_date_time?: string;
-  dispatch_date?: string;
-  dispatch_time?: string;
-  hour?: number;
-  dc_key?: string;
-  location_block?: string;
-  ucr_general?: number;
-  text_general_code?: string;
-  point_x?: number;
-  point_y?: number;
-  lat?: number;
-  lng?: number;
-}
+export interface CreateIncidentRequest extends Partial<Incident> {}
 
-// User Report Interfaces
 export interface UserReport {
   id: string;
   type: string;
@@ -84,21 +66,9 @@ export interface UserReport {
   user_id?: string;
 }
 
-export interface CreateUserReportRequest {
-  type: string;
-  location: string;
-  use_current_location: boolean;
-  photos: string[];
-  description: string;
-  severity: string;
-  anonymous: boolean;
-  contact?: string;
-  lat?: number;
-  lng?: number;
-  user_id?: string; // Add user_id for gamification
-}
+export interface CreateUserReportRequest
+  extends Omit<UserReport, "id" | "timestamp" | "status"> {}
 
-// User Data Interfaces for Gamification
 export interface UserData {
   id: string;
   user_id: string;
@@ -120,41 +90,9 @@ export interface UserData {
   updated_at: string;
 }
 
-export interface CreateUserDataRequest {
-  user_id: string;
-  total_submissions?: number;
-  first_submission_date?: string;
-  last_submission_date?: string;
-  submission_types?: Record<string, number>;
-  total_photos_submitted?: number;
-  reports_resolved?: number;
-  reports_pending?: number;
-  streak_days?: number;
-  longest_streak?: number;
-  last_activity_date?: string;
-  level?: number;
-  experience_points?: number;
-  achievements?: string[];
-  badges?: string[];
-}
+export interface CreateUserDataRequest extends Partial<UserData> {}
+export interface UpdateUserDataRequest extends Partial<UserData> {}
 
-export interface UpdateUserDataRequest {
-  total_submissions?: number;
-  last_submission_date?: string;
-  submission_types?: Record<string, number>;
-  total_photos_submitted?: number;
-  reports_resolved?: number;
-  reports_pending?: number;
-  streak_days?: number;
-  longest_streak?: number;
-  last_activity_date?: string;
-  level?: number;
-  experience_points?: number;
-  achievements?: string[];
-  badges?: string[];
-}
-
-// Authentication Interfaces
 export interface User {
   id: string;
   username: string;
@@ -175,147 +113,142 @@ export interface UserLogin {
   password: string;
 }
 
+// ---------------- ApiService ---------------- //
 class ApiService {
-  private baseUrl: string;
-
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
-    }
-  }
-
-  // Get all crime data
+  // ---------- Crime Data ---------- //
   async getCrime(): Promise<Incident[]> {
-    return this.request<Incident[]>('/crime');
+    const response = await axios.get(`${API_BASE_URL}/crime`);
+    const data = response.data;
+
+    // Ensure array
+    if (!Array.isArray(data)) {
+      console.error("Expected array, got:", data);
+      return [];
+    }
+
+    console.log("Crime data sample:", data.slice(0, 5));
+    return data;
   }
 
-  // Get a specific crime record by ID
   async getCrimeById(id: string): Promise<Incident> {
-    return this.request<Incident>(`/crime/${id}`);
+    const response = await axios.get<Incident>(`${API_BASE_URL}/crime/${id}`);
+    return response.data;
   }
 
-  // Create a new crime record
   async createCrime(incident: CreateIncidentRequest): Promise<Incident> {
-    return this.request<Incident>('/crime', {
-      method: 'POST',
-      body: JSON.stringify(incident),
-    });
+    const response = await axios.post<Incident>(
+      `${API_BASE_URL}/crime`,
+      incident
+    );
+    return response.data;
   }
 
-  // User Reports API Methods
-  // Get all user reports
+  // ---------- User Reports ---------- //
   async getUserReports(): Promise<UserReport[]> {
-    return this.request<UserReport[]>('/reports');
+    const response = await axios.get<UserReport[]>(`${API_BASE_URL}/reports`);
+    return response.data;
   }
 
-  // Get a specific user report by ID
   async getUserReportById(id: string): Promise<UserReport> {
-    return this.request<UserReport>(`/reports/${id}`);
+    const response = await axios.get<UserReport>(
+      `${API_BASE_URL}/reports/${id}`
+    );
+    return response.data;
   }
 
-  // Create a new user report
   async createUserReport(report: CreateUserReportRequest): Promise<UserReport> {
-    return this.request<UserReport>('/reports', {
-      method: 'POST',
-      body: JSON.stringify(report),
-    });
+    const response = await axios.post<UserReport>(
+      `${API_BASE_URL}/reports`,
+      report
+    );
+    return response.data;
   }
 
-  // Update report status (for admin use)
-  async updateReportStatus(reportId: string, status: string): Promise<UserReport> {
-    return this.request<UserReport>(`/reports/${reportId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
+  async updateReportStatus(
+    reportId: string,
+    status: string
+  ): Promise<UserReport> {
+    const response = await axios.put<UserReport>(
+      `${API_BASE_URL}/reports/${reportId}/status`,
+      { status }
+    );
+    return response.data;
   }
 
-  // User Data API Methods (Gamification)
-  // Get user data and statistics
+  // ---------- Gamification Data ---------- //
   async getUserData(userId: string): Promise<UserData> {
-    return this.request<UserData>(`/userdata/${userId}`);
+    const response = await axios.get<UserData>(
+      `${AUTH_BASE_URL}/userdata/${userId}`
+    );
+    return response.data;
   }
 
-  // Create new user data
   async createUserData(userData: CreateUserDataRequest): Promise<UserData> {
-    return this.request<UserData>('/userdata', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
+    const response = await axios.post<UserData>(
+      `${AUTH_BASE_URL}/userdata`,
+      userData
+    );
+    return response.data;
   }
 
-  // Get leaderboard (all users sorted by total submissions)
   async getLeaderboard(): Promise<UserData[]> {
-    return this.request<UserData[]>('/userdata/leaderboard');
+    const response = await axios.get<UserData[]>(
+      `${AUTH_BASE_URL}/userdata/leaderboard`
+    );
+    return response.data;
   }
 
-  // Authentication API Methods
-  // Register a new user
+  // ---------- Authentication ---------- //
   async registerUser(userData: UserRegister): Promise<User> {
-    return this.request<User>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
+    const response = await axios.post<User>(
+      `${AUTH_BASE_URL}/auth/register`,
+      userData
+    );
+    return response.data;
   }
 
-  // Login user
   async loginUser(loginData: UserLogin): Promise<User> {
-    return this.request<User>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(loginData),
-    });
+    const response = await axios.post<User>(
+      `${AUTH_BASE_URL}/auth/login`,
+      loginData
+    );
+    return response.data;
   }
 
-  // Get user by username
   async getUserByUsername(username: string): Promise<User> {
-    return this.request<User>(`/auth/users/${username}`);
+    const response = await axios.get<User>(
+      `${AUTH_BASE_URL}/auth/users/${username}`
+    );
+    return response.data;
   }
 
-  // Update user contributions
-  async updateUserContributions(username: string, contributions: number): Promise<{message: string}> {
-    return this.request<{message: string}>(`/auth/users/${username}/contributions?contributions=${contributions}`, {
-      method: 'PUT',
-    });
+  async updateUserContributions(
+    username: string,
+    contributions: number
+  ): Promise<{ message: string }> {
+    const response = await axios.put<{ message: string }>(
+      `${AUTH_BASE_URL}/auth/users/${username}/contributions?contributions=${contributions}`
+    );
+    return response.data;
   }
 
-  // Convert API incident to map-compatible format
-  convertToMapData(incidents: Incident[]) {
-    return incidents.map(incident => ({
+  // ---------- Helpers ---------- //
+  convertToMapData(incidents: Incident[] | undefined) {
+    if (!incidents || !Array.isArray(incidents)) return [];
+
+    return incidents.map((incident) => ({
       id: incident.id || incident._id,
       latitude: incident.lat || incident.point_y || 0,
       longitude: incident.lng || incident.point_x || 0,
       crime_type: this.getCrimeTypeFromUCR(incident.ucr_general),
       severity: this.getSeverityFromUCR(incident.ucr_general),
-      date: incident.dispatch_date ? incident.dispatch_date.split('T')[0] : new Date().toISOString().split('T')[0],
-      address: incident.location_block || 'Unknown Location',
+      date: incident.dispatch_date
+        ? incident.dispatch_date.split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      address: incident.location_block || "Unknown Location",
       neighborhood: this.extractNeighborhood(incident.location_block),
-      type: incident.text_general_code || 'Unknown Crime',
-      source: 'official', // All data from MongoDB is official
+      type: incident.text_general_code || "Unknown Crime",
+      source: "official",
       description: incident.text_general_code,
       hour: incident.hour,
       dc_dist: incident.dc_dist,
@@ -324,45 +257,38 @@ class ApiService {
   }
 
   private getCrimeTypeFromUCR(ucr_general?: number): string {
-    if (!ucr_general) return 'other';
-    
-    // Map UCR codes to crime types
-    if (ucr_general >= 100 && ucr_general < 200) return 'violent';
-    if (ucr_general >= 200 && ucr_general < 300) return 'property';
-    if (ucr_general >= 300 && ucr_general < 400) return 'violent';
-    if (ucr_general >= 400 && ucr_general < 500) return 'property';
-    if (ucr_general >= 500 && ucr_general < 600) return 'property';
-    if (ucr_general >= 600 && ucr_general < 700) return 'vehicle';
-    if (ucr_general >= 700 && ucr_general < 800) return 'drug';
-    if (ucr_general >= 800 && ucr_general < 900) return 'vandalism';
-    return 'other';
+    if (!ucr_general) return "other";
+    if (ucr_general >= 100 && ucr_general < 200) return "violent";
+    if (ucr_general >= 200 && ucr_general < 300) return "property";
+    if (ucr_general >= 300 && ucr_general < 400) return "violent";
+    if (ucr_general >= 400 && ucr_general < 500) return "property";
+    if (ucr_general >= 500 && ucr_general < 600) return "property";
+    if (ucr_general >= 600 && ucr_general < 700) return "vehicle";
+    if (ucr_general >= 700 && ucr_general < 800) return "drug";
+    if (ucr_general >= 800 && ucr_general < 900) return "vandalism";
+    return "other";
   }
 
   private getSeverityFromUCR(ucr_general?: number): number {
     if (!ucr_general) return 1;
-    
-    // Map UCR codes to severity levels
-    if (ucr_general >= 100 && ucr_general < 200) return 3; // Violent crimes
-    if (ucr_general >= 200 && ucr_general < 300) return 2; // Property crimes
-    if (ucr_general >= 300 && ucr_general < 400) return 3; // Violent crimes
-    if (ucr_general >= 400 && ucr_general < 500) return 2; // Property crimes
-    if (ucr_general >= 500 && ucr_general < 600) return 2; // Property crimes
-    if (ucr_general >= 600 && ucr_general < 700) return 2; // Vehicle crimes
-    if (ucr_general >= 700 && ucr_general < 800) return 3; // Drug crimes
-    if (ucr_general >= 800 && ucr_general < 900) return 1; // Vandalism
+    if (ucr_general >= 100 && ucr_general < 200) return 3;
+    if (ucr_general >= 200 && ucr_general < 300) return 2;
+    if (ucr_general >= 300 && ucr_general < 400) return 3;
+    if (ucr_general >= 400 && ucr_general < 500) return 2;
+    if (ucr_general >= 500 && ucr_general < 600) return 2;
+    if (ucr_general >= 600 && ucr_general < 700) return 2;
+    if (ucr_general >= 700 && ucr_general < 800) return 3;
+    if (ucr_general >= 800 && ucr_general < 900) return 1;
     return 1;
   }
 
   private extractNeighborhood(location_block?: string): string {
-    if (!location_block) return 'Unknown';
-    
-    // Extract neighborhood from location block
-    // This is a simple extraction - you might want to improve this
-    const parts = location_block.split(' ');
+    if (!location_block) return "Unknown";
+    const parts = location_block.split(" ");
     if (parts.length > 2) {
-      return parts.slice(2).join(' ');
+      return parts.slice(2).join(" ");
     }
-    return 'Unknown';
+    return "Unknown";
   }
 }
 
