@@ -17,11 +17,11 @@ import { apiService, UserData } from '../services/api';
 const STATUS_LEVELS = [
   { name: 'Newbie Helper', minReports: 0, maxReports: 2, icon: 'leaf', color: '#8E8E93', description: 'Just got started' },
   { name: 'Good Samaritan', minReports: 3, maxReports: 7, icon: 'heart', color: '#34C759', description: 'Helped a few people' },
-  { name: 'Community Hero', minReports: 8, maxReports: 15, icon: 'star', color: '#FF9500', description: 'Consistently helping' },
-  { name: 'Neighborhood Guardian', minReports: 16, maxReports: 30, icon: 'shield', color: '#007AFF', description: 'Protects their local area' },
-  { name: 'City Legend', minReports: 31, maxReports: 50, icon: 'trophy', color: '#FF2D92', description: 'Major contributor across many places' },
-  { name: 'Dark Knight', minReports: 51, maxReports: 100, icon: 'moon', color: '#5856D6', description: 'Super rare / meme tier 🦇' },
-  { name: 'Mythic Ally', minReports: 101, maxReports: Infinity, icon: 'diamond', color: '#FF3B30', description: 'Legendary status' },
+  { name: 'Patriot', minReports: 8, maxReports: 15, icon: 'star', color: '#FF9500', description: 'Consistently helping' },
+  { name: 'Guardian', minReports: 16, maxReports: 30, icon: 'shield', color: '#007AFF', description: 'Protects their local area' },
+  { name: 'Robinhood', minReports: 31, maxReports: 50, icon: 'trophy', color: '#FF2D92', description: 'Major contributor across many places' },
+  { name: 'Nightwing', minReports: 51, maxReports: 100, icon: 'moon', color: '#5856D6', description: 'Super rare / meme tier 🦇' },
+  { name: 'Batman', minReports: 101, maxReports: Infinity, icon: 'diamond', color: '#FF3B30', description: 'Legendary status' },
 ];
 
 const ProfileScreen = () => {

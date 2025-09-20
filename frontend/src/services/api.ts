@@ -1,6 +1,3 @@
-// API service for PhillySafe backend
-const API_BASE_URL = 'http://localhost:8000'; // Change this to your backend URL
-// Auth service (separate auth microservice) - change if your auth server runs elsewhere
 const AUTH_BASE_URL = 'http://127.0.0.1:8000';
 
 export interface Incident {
