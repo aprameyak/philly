@@ -64,28 +64,20 @@ def all_crime():
 
     x = []
 
-    '''print("Finding all crime")
-    relevant_cols = [
+    print("Finding all crime")
+
+    cat = [
         "id",
         "_id",
         "the_geom",
-        "cartodb_id",
         "the_geom_webmercator",
-        "objectid",
-        "dc_dist",
         "psa",
         "dispatch_date_time",
         "dispatch_date",
         "dispatch_time",
-        "hour",
         "dc_key",
         "location_block",
-        "ucr_general",
         "text_general_code",
-        "point_x",
-        "point_y",
-        "lat",
-        "lng"
     ]
 
 
@@ -93,14 +85,15 @@ def all_crime():
 
 
     x = []
-    for row in df.iterrows():
-        d = {str(row[col]) for col in relevant_cols}
-        for col in numerical:
-            if str(d[col]).lower() not in ['nan', 'none']:
-                d[col] = int(d[col])
+    for idx, row in df.iterrows():
+        dic = {}
+        for c in cat:
+            dic[c] = row.get(c)
+        for c in numerical:
+            dic[c] = float(row.get(c) or 0)
 
         
-        x.append(d)'''
+        x.append(dic)
         
 
     return x
