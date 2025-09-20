@@ -37,10 +37,12 @@ const MapScreen = () => {
     loading: incidentsLoading,
     error: incidentsError,
   } = useCrime();
-  const [currentFilters] = useState({
+  const [currentFilters, setCurrentFilters] = useState({
     timeRange: "7d",
-    crimeTypes: [],
+    crimeTypes: [] as string[],
     showHeatmap: true,
+    minSeverity: 1,
+    maxSeverity: 5,
   });
 
   useEffect(() => {
@@ -54,6 +56,38 @@ const MapScreen = () => {
       setCrimeData(mapData);
     }
   }, [incidents]);
+
+  // Function to fetch filtered crime data
+  const fetchFilteredCrimeData = async () => {
+    try {
+      setIsLoading(true);
+      const daysBack = currentFilters.timeRange === "7d" ? 7 : 
+                      currentFilters.timeRange === "30d" ? 30 : 1;
+      
+      const filters = {
+        min_severity: currentFilters.minSeverity,
+        max_severity: currentFilters.maxSeverity,
+        days_back: daysBack,
+        crime_type: currentFilters.crimeTypes.length === 1 ? currentFilters.crimeTypes[0] : undefined
+      };
+      
+      const filteredIncidents = await apiService.getFilteredCrime(filters);
+      const mapData = apiService.convertToMapData(filteredIncidents);
+      setCrimeData(mapData);
+      
+      // Update the WebView with new data
+      if (webViewRef.current) {
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'updateHeatmap',
+          data: mapData
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching filtered crime data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -79,7 +113,47 @@ const MapScreen = () => {
   };
 
   const handleFilterPress = () => {
-    Alert.alert("Filters", "Filter functionality would open here");
+    Alert.alert(
+      "Filter Crime Data",
+      "Choose filter options:",
+      [
+        {
+          text: "Last 7 Days",
+          onPress: () => {
+            setCurrentFilters(prev => ({ ...prev, timeRange: "7d" }));
+            fetchFilteredCrimeData();
+          }
+        },
+        {
+          text: "Last 30 Days", 
+          onPress: () => {
+            setCurrentFilters(prev => ({ ...prev, timeRange: "30d" }));
+            fetchFilteredCrimeData();
+          }
+        },
+        {
+          text: "High Severity Only (4-5)",
+          onPress: () => {
+            setCurrentFilters(prev => ({ ...prev, minSeverity: 4, maxSeverity: 5 }));
+            fetchFilteredCrimeData();
+          }
+        },
+        {
+          text: "Reset Filters",
+          onPress: () => {
+            setCurrentFilters({
+              timeRange: "7d",
+              crimeTypes: [],
+              showHeatmap: true,
+              minSeverity: 1,
+              maxSeverity: 5,
+            });
+            fetchFilteredCrimeData();
+          }
+        },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
   };
 
   // Single HTML file with everything embedded
@@ -268,24 +342,27 @@ const MapScreen = () => {
             
             console.log('Heatmap data processed:', heatmapData.length, 'points');
             
-            // Create Deck.gl heatmap layer
+            // Create Deck.gl heatmap layer with dynamic settings
             const heatmapLayer = new deck.HeatmapLayer({
               id: 'philadelphia-crime-heatmap',
               data: heatmapData,
               getPosition: d => [d.longitude, d.latitude],
-              getWeight: d => d.weight,
-              radiusPixels: 60,
-              intensity: 1.5,
-              threshold: 0.03,
+              getWeight: d => d.weight || 1,
+              radiusPixels: 80,
+              intensity: 2.0,
+              threshold: 0.02,
               colorRange: [
-                [0, 255, 0, 120],      // Green - Safe areas
-                [255, 255, 0, 160],    // Yellow - Low crime  
-                [255, 165, 0, 200],    // Orange - Medium crime
-                [255, 69, 0, 240],     // Red-orange - High crime
+                [0, 255, 0, 100],      // Green - Safe areas
+                [255, 255, 0, 140],    // Yellow - Low crime  
+                [255, 165, 0, 180],    // Orange - Medium crime
+                [255, 69, 0, 220],     // Red-orange - High crime
                 [255, 0, 0, 255]       // Red - Dangerous areas
               ],
               aggregation: 'SUM',
-              weightsTextureSize: 2048
+              weightsTextureSize: 2048,
+              updateTriggers: {
+                getWeight: heatmapData.length // Re-render when data changes
+              }
             });
             
             console.log('Creating Deck.gl overlay...');
@@ -295,6 +372,10 @@ const MapScreen = () => {
               layers: [heatmapLayer]
             });
             deckOverlay.setMap(map);
+            
+            // Store reference for updates
+            window.currentHeatmapLayer = heatmapLayer;
+            window.currentDeckOverlay = deckOverlay;
             
             console.log('Deck.gl overlay added to map');
             
@@ -360,6 +441,44 @@ const MapScreen = () => {
           };
           document.head.appendChild(script);
         }
+        
+        // Function to update heatmap data
+        function updateHeatmapData(newData) {
+          if (window.currentHeatmapLayer && window.currentDeckOverlay) {
+            console.log('Updating heatmap with', newData.length, 'new data points');
+            
+            const heatmapData = newData.map(incident => ({
+              longitude: incident.longitude,
+              latitude: incident.latitude,
+              weight: incident.severity || 1
+            }));
+            
+            // Update the layer data
+            window.currentHeatmapLayer.setProps({
+              data: heatmapData,
+              updateTriggers: {
+                getWeight: heatmapData.length
+              }
+            });
+            
+            console.log('Heatmap updated successfully');
+          }
+        }
+        
+        // Make updateHeatmapData globally available
+        window.updateHeatmapData = updateHeatmapData;
+        
+        // Listen for messages from React Native
+        window.addEventListener('message', function(event) {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'updateHeatmap' && message.data) {
+              updateHeatmapData(message.data);
+            }
+          } catch (error) {
+            console.error('Error processing message:', error);
+          }
+        });
         
         // Initialize when page loads
         if (document.readyState === 'loading') {

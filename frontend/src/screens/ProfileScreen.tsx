@@ -62,7 +62,7 @@ const ProfileScreen = () => {
 
   // Calculate current status based on total submissions
   const getCurrentStatus = () => {
-    const totalReports = userData?.total_submissions || 0;
+    const totalReports = userData?.total_reports || 0;
     return STATUS_LEVELS.find(level => 
       totalReports >= level.minReports && totalReports <= level.maxReports
     ) || STATUS_LEVELS[0];
@@ -70,7 +70,7 @@ const ProfileScreen = () => {
 
   // Calculate progress to next level
   const getProgressToNextLevel = () => {
-    const totalReports = userData?.total_submissions || 0;
+    const totalReports = userData?.total_reports || 0;
     const currentStatus = getCurrentStatus();
     const currentIndex = STATUS_LEVELS.findIndex(level => level.name === currentStatus.name);
     
@@ -90,7 +90,7 @@ const ProfileScreen = () => {
   };
 
   const statsData = [
-    { label: 'Reports Submitted', value: userData?.total_submissions?.toString() || '0', icon: 'document-text' },
+    { label: 'Reports Submitted', value: userData?.total_reports?.toString() || '0', icon: 'document-text' },
   ];
 
   const currentStatus = getCurrentStatus();

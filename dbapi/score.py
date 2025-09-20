@@ -10,7 +10,7 @@ load_dotenv()
 
 # client = Mistral(api_key=api_key)
 client = Cerebras(
-  api_key=os.environ.get("CEREBRAS"),
+  api_key=os.environ.get("CEREBRAS", "dummy_api_key_for_development"),
 )
 
 
@@ -49,6 +49,33 @@ def generate(events, lat, long, time):
     Returns JSON as string.
     """
     try:
+        # Mock response for development (no real API calls)
+        if os.environ.get("CEREBRAS") == "dummy_api_key_for_development" or not os.environ.get("CEREBRAS"):
+            # Return mock data based on number of events
+            event_count = len(events) if events else 0
+            if event_count == 0:
+                danger_score = 1
+                reasons = ["No recent incidents reported in this area"]
+            elif event_count <= 2:
+                danger_score = 2
+                reasons = ["Low activity area with minimal incidents"]
+            elif event_count <= 5:
+                danger_score = 3
+                reasons = ["Moderate activity with some incidents reported"]
+            elif event_count <= 10:
+                danger_score = 4
+                reasons = ["High activity area with multiple incidents", "Exercise caution when visiting"]
+            else:
+                danger_score = 5
+                reasons = ["Very high crime activity", "Multiple serious incidents reported", "Avoid this area if possible"]
+            
+            mock_response = {
+                "danger_score": danger_score,
+                "reasons": reasons
+            }
+            return json.dumps(mock_response)
+        
+        # Real API call (only if real API key is provided)
         response = client.chat.completions.create( #.complete
             model=model,
             messages=[{"role": "user", "content": prompt(events, lat, long, time)}],

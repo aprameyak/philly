@@ -173,7 +173,7 @@ const LeaderboardScreen = () => {
 
                   <View style={styles.scoreContainer}>
                     <Text style={[styles.score, { color: rankColor }]}>
-                      {userData.total_submissions}
+                      {userData.total_reports}
                     </Text>
                     <Text style={styles.scoreLabel}>reports</Text>
                   </View>

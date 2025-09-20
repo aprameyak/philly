@@ -15,6 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_STORAGE_KEY = '@phillysafe_user';
+const TOKEN_STORAGE_KEY = '@phillysafe_token';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -36,6 +37,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+      const storedToken = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+      if (storedToken) {
+        apiService.setAuthToken(storedToken);
+      }
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         setUser(userData);
@@ -55,6 +60,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const saveTokenToStorage = async (token: string) => {
+    try {
+      await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);
+    } catch (error) {
+      console.error('Error saving token to storage:', error);
+    }
+  };
+
   const removeUserFromStorage = async () => {
     try {
       await AsyncStorage.removeItem(USER_STORAGE_KEY);
@@ -68,6 +81,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       setIsLoading(true);
       const userData = await apiService.loginUser(loginData);
+      // apiService.loginUser sets the token internally; persist it
+      const token = apiService.getAuthToken();
+      if (token) await saveTokenToStorage(token);
       setUser(userData);
       await saveUserToStorage(userData);
     } catch (error: any) {
@@ -84,8 +100,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       setIsLoading(true);
       const userData = await apiService.registerUser(registerData);
-      setUser(userData);
-      await saveUserToStorage(userData);
+      // authapi.register doesn't return a token; auto-login to obtain token
+      try {
+        const loginData = { username: registerData.username, password: registerData.password };
+        const loggedInUser = await apiService.loginUser(loginData);
+        const token = apiService.getAuthToken();
+        if (token) await saveTokenToStorage(token);
+        setUser(loggedInUser);
+        await saveUserToStorage(loggedInUser);
+      } catch (e) {
+        // If auto-login fails, still return created user object
+        setUser(userData);
+        await saveUserToStorage(userData);
+      }
     } catch (error: any) {
       const errorMessage = error.message || 'Registration failed';
       setError(errorMessage);
@@ -98,7 +125,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setUser(null);
+      apiService.setAuthToken(null);
       await removeUserFromStorage();
+      await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
     } catch (error) {
       console.error('Error during logout:', error);
     }

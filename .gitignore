@@ -2,3 +2,5 @@ pycache
 node_modules 
 .env
 venv
+/dbapi/__pycache__
+/authapi/__pycache__

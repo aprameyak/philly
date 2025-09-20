@@ -1,3 +1,6 @@
 cerebras_cloud_sdk
 pandas 
 flask
+flask-cors
+python-dotenv
+requests

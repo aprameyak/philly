@@ -183,7 +183,7 @@ const UserStats: React.FC<UserStatsProps> = ({ userId, onClose }) => {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Ionicons name="document-text" size={24} color="#007AFF" />
-            <Text style={styles.statNumber}>{userData.total_submissions}</Text>
+            <Text style={styles.statNumber}>{userData.total_reports}</Text>
             <Text style={styles.statLabel}>Reports</Text>
           </View>
           

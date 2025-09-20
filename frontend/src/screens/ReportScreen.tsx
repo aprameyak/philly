@@ -15,6 +15,8 @@ import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useRoute } from "@react-navigation/native";
+import { useAuth } from "../contexts/AuthContext";
+import { apiService, CreateUserReportRequest } from "../services/api";
 
 interface ReportData {
   type: string;
@@ -70,6 +72,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyD76ShbpMOEu02aheDb3n2gATANFZc1hgM";
 const ReportScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -241,17 +244,47 @@ const ReportScreen = () => {
     }
   };
 
-  const handleSubmit = () => {
-    const report = {
-      ...reportData,
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      status: "open",
-    };
+  const handleSubmit = async () => {
+    if (!user?.username) {
+      Alert.alert("Error", "You must be logged in to submit a report.");
+      return;
+    }
 
-    Alert.alert("Success", "Your report has been submitted successfully!", [
-      { text: "OK", onPress: () => navigation.goBack() },
-    ]);
+    try {
+      setIsLoading(true);
+
+      // Convert severity string to number
+      const severityMap: { [key: string]: number } = {
+        "low": 1,
+        "medium": 3,
+        "high": 5
+      };
+
+      const reportRequest: CreateUserReportRequest = {
+        username: user.username,
+        type: reportData.type,
+        description: reportData.description,
+        latitude: reportData.coordinates?.latitude,
+        longitude: reportData.coordinates?.longitude,
+        severity: severityMap[reportData.severity] || 3,
+        photos: reportData.photos
+      };
+
+      const response = await apiService.createUserReport(reportRequest);
+      
+      Alert.alert(
+        "Success", 
+        `Your report has been submitted successfully! Total reports: ${response.total_reports}`, 
+        [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]
+      );
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      Alert.alert("Error", "Failed to submit report. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderEditableField = (
@@ -517,9 +550,15 @@ const ReportScreen = () => {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+        <TouchableOpacity 
+          style={[styles.submitButton, isLoading && styles.submitButtonDisabled]} 
+          onPress={handleSubmit}
+          disabled={isLoading}
+        >
           <Ionicons name="checkmark-circle" size={20} color="white" />
-          <Text style={styles.buttonText}>Submit Report</Text>
+          <Text style={styles.buttonText}>
+            {isLoading ? "Submitting..." : "Submit Report"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -815,6 +854,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+  },
+  submitButtonDisabled: {
+    backgroundColor: "#8E8E93",
+    opacity: 0.6,
   },
   buttonText: {
     color: "white",
