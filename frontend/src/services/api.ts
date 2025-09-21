@@ -1,5 +1,5 @@
-// Use localhost for development, but fallback to IP if needed
-const AUTH_BASE_URL = __DEV__ ? 'http://localhost:8000' : 'http://localhost:8000';
+// Use machine IP for React Native/Expo development
+const AUTH_BASE_URL = __DEV__ ? 'http://10.250.133.80:8000' : 'http://localhost:8000';
 
 export interface UserReportsResponse {
   username: string;
@@ -168,14 +168,31 @@ class ApiService {
   }
 
   async loginUser(credentials: UserLogin): Promise<LoginResponse> {
-    // For now, we'll use a simple approach since we don't have a login endpoint
-    // We'll just return the user data if they exist
-    const userData = await this.getUserData(credentials.username);
-    return {
-      username: userData.username,
-      display_name: userData.username, // Fallback to username
-      total_reports: userData.total_reports
-    };
+    try {
+      // Try to get existing user data
+      const userData = await this.getUserData(credentials.username);
+      return {
+        username: userData.username,
+        display_name: userData.username, // Fallback to username
+        total_reports: userData.total_reports
+      };
+    } catch (error) {
+      // If user doesn't exist, create them automatically
+      if (error instanceof Error && error.message.includes('User not found')) {
+        console.log('User not found, creating new user:', credentials.username);
+        const newUser = await this.registerUser({
+          username: credentials.username,
+          password: credentials.password,
+          display_name: credentials.username
+        });
+        return {
+          username: newUser.username,
+          display_name: newUser.display_name || newUser.username,
+          total_reports: newUser.reports
+        };
+      }
+      throw error;
+    }
   }
 
   // -------------------
@@ -186,7 +203,7 @@ class ApiService {
     // Try to get real data from dbapi first, fallback to authapi
     try {
       const realData = await this.request<CrimeIncident[]>('/crime', {
-        baseUrl: 'http://localhost:8001'
+        baseUrl: 'http://10.250.133.80:8001'
       });
       if (realData && realData.length > 0) {
         console.log('Using real crime data from dbapi:', realData.length, 'records');
@@ -222,16 +239,22 @@ class ApiService {
   // Crime Map Data
   // -------------------
 
-  convertToMapData(incidents: CrimeIncident[]): CrimeIncident[] {
-    return incidents.map((incident) => ({
-      latitude: Number(incident.latitude) || 0,
-      longitude: Number(incident.longitude) || 0,
-      weight: Number(incident.weight ?? incident.severity) || 1,
-      crime_type: incident.crime_type || "Unknown",
-      severity: incident.severity || 1,
-      description: incident.description || "",
-      date: incident.date !== undefined && incident.date !== null ? incident.date : undefined,
-    }));
+  convertToMapData(incidents: any[]): CrimeIncident[] {
+    return incidents.map((incident) => {
+      // Handle both real data format (point_x/point_y) and simulated data format (latitude/longitude)
+      const lat = incident.point_y || incident.latitude || 0;
+      const lng = incident.point_x || incident.longitude || 0;
+      
+      return {
+        latitude: Number(lat) || 0,
+        longitude: Number(lng) || 0,
+        weight: Number(incident.weight ?? incident.severity ?? incident.ucr_general) || 1,
+        crime_type: incident.crime_type || incident.text_general_code || "Unknown",
+        severity: Number(incident.severity ?? incident.ucr_general) || 1,
+        description: incident.description || incident.text_general_code || "",
+        date: incident.date || incident.dispatch_date || undefined,
+      };
+    });
   }
 }
 

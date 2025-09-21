@@ -14,8 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USER_STORAGE_KEY = '@phillysafe_user';
-const TOKEN_STORAGE_KEY = '@phillysafe_token';
+const USER_STORAGE_KEY = '@PhilaWatch_user';
+const TOKEN_STORAGE_KEY = '@PhilaWatch_token';
 
 interface AuthProviderProps {
   children: ReactNode;

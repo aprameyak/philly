@@ -52,7 +52,7 @@ const OnboardingScreen = () => {
           <View style={styles.logoContainer}>
             <Ionicons name="location" size={40} color="#007AFF" />
           </View>
-          <Text style={styles.title}>PhillySafe</Text>
+          <Text style={styles.title}>PhilaWatch</Text>
           <Text style={styles.subtitle}>Crime Heatmaps & Community Reports</Text>
         </View>
 

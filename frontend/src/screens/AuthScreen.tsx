@@ -69,7 +69,7 @@ const AuthScreen = () => {
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.header}>
             <Ionicons name="shield-checkmark" size={60} color="#007AFF" />
-            <Text style={styles.title}>PhillySafe</Text>
+            <Text style={styles.title}>PhilaWatch</Text>
             <Text style={styles.subtitle}>
               {isLogin ? 'Welcome back!' : 'Create your account'}
             </Text>

@@ -49,8 +49,9 @@ def generate(events, lat, long, time):
     Returns JSON as string.
     """
     try:
-        # Mock response for development (no real API calls)
-        if os.environ.get("CEREBRAS") == "dummy_api_key_for_development" or not os.environ.get("CEREBRAS"):
+        # Check if we have a real API key
+        cerebras_key = os.environ.get("CEREBRAS")
+        if not cerebras_key or cerebras_key == "dummy_api_key_for_development":
             # Return mock data based on number of events
             event_count = len(events) if events else 0
             if event_count == 0:
@@ -75,25 +76,44 @@ def generate(events, lat, long, time):
             }
             return json.dumps(mock_response)
         
-        # Real API call (only if real API key is provided)
-        response = client.chat.completions.create( #.complete
+        # Real API call with Cerebras
+        print(f"Using real Cerebras API for location {lat}, {long}")
+        response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt(events, lat, long, time)}],
             temperature=0,
-            # suffix=suffix,  # Mistral chat API doesn't need separate suffix if included in prompt
-            # min_tokens=1,  # Uncomment to enforce minimum tokens
         )
         content = response.choices[0].message.content
+        
+        # Clean up the response
         if content.startswith("```"):
            content = content.strip("`").strip()
-        content = content.replace("json", "") #Startswith
-        content = json.loads(content)
+        if content.startswith("json"):
+           content = content.replace("json", "").strip()
+        
+        # Parse JSON response
+        try:
+            content = json.loads(content)
+        except json.JSONDecodeError:
+            # If JSON parsing fails, return a structured response
+            content = {
+                "danger_score": 3,
+                "reasons": [content[:100] + "..." if len(content) > 100 else content]
+            }
+        
         content['events'] = events
-
-        return content
+        return json.dumps(content)
 
     except Exception as e:
-        raise e
+        print(f"Error in generate function: {e}")
+        # Fallback to mock response on error
+        event_count = len(events) if events else 0
+        danger_score = min(5, max(1, event_count // 2 + 1))
+        fallback_response = {
+            "danger_score": danger_score,
+            "reasons": [f"Analysis error: {str(e)[:50]}...", "Using fallback scoring"]
+        }
+        return json.dumps(fallback_response)
 
 
 

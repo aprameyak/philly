@@ -68,7 +68,7 @@ const IncidentDetailsScreen = () => {
     try {
       await Share.share({
         message: `${incident.type} reported at ${incident.location} - ${incident.description || 'No description available'}`,
-        title: 'PhillySafe Incident Report',
+        title: 'PhilaWatch Incident Report',
       });
     } catch (error) {
       console.error('Error sharing:', error);

@@ -52,10 +52,4 @@ def get_rating(lat, long, time):
     g = generate(x, lat, long, time)
     return g
 
-print(json.dumps(
-        get_rating(
-            39.957074, -75.195155, "10PM 9/20/2025"
-        ), 
-        indent = 2
-    )   
-)
+# Test call removed - dbapi will work without hardcoded positions
